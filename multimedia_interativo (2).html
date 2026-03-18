@@ -1,0 +1,872 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Imagens em Multimédia — Aplicações Informáticas</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;700;800;900&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0a0f;
+    --surface: #12121a;
+    --border: #1e1e2e;
+    --bitmap: #ff3e3e;
+    --vector: #00e5a0;
+    --accent: #7b5ea7;
+    --gold: #f5c842;
+    --text: #e8e8f0;
+    --muted: #6b6b8a;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Syne', sans-serif;
+    overflow-x: hidden;
+    cursor: none;
+  }
+
+  #cursor {
+    position: fixed; width: 12px; height: 12px;
+    background: var(--vector); border-radius: 50%;
+    pointer-events: none; z-index: 9999;
+    transform: translate(-50%,-50%);
+    transition: transform 0.15s, background 0.2s;
+  }
+  #cursor-ring {
+    position: fixed; width: 36px; height: 36px;
+    border: 1.5px solid var(--vector); border-radius: 50%;
+    pointer-events: none; z-index: 9998;
+    transform: translate(-50%,-50%);
+    opacity: 0.5;
+    transition: width 0.2s, height 0.2s;
+  }
+
+  body::before {
+    content: '';
+    position: fixed; inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");
+    pointer-events: none; z-index: 1000; opacity: 0.35;
+  }
+
+  nav {
+    position: fixed; top: 0; left: 0; right: 0;
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 16px 40px; z-index: 100;
+    backdrop-filter: blur(20px);
+    border-bottom: 1px solid var(--border);
+    background: rgba(10,10,15,0.85);
+  }
+  .nav-logo {
+    font-family: 'Space Mono', monospace;
+    font-size: 11px; color: var(--vector);
+    letter-spacing: 3px; text-transform: uppercase;
+  }
+  .nav-pills { display: flex; gap: 5px; }
+  .nav-pill {
+    font-family: 'Space Mono', monospace;
+    font-size: 9px; padding: 5px 13px;
+    border-radius: 20px; border: 1px solid var(--border);
+    background: transparent; color: var(--muted);
+    cursor: none; transition: all 0.2s;
+    text-transform: uppercase; letter-spacing: 1px;
+    text-decoration: none;
+  }
+  .nav-pill:hover, .nav-pill.active {
+    border-color: var(--vector); color: var(--vector);
+    background: rgba(0,229,160,0.07);
+  }
+
+  section { min-height: 100vh; padding: 100px 40px 70px; position: relative; }
+
+  /* ── HERO ── */
+  #hero { display: flex; flex-direction: column; justify-content: center; overflow: hidden; }
+
+  .hero-label {
+    font-family: 'Space Mono', monospace; font-size: 10px;
+    color: var(--vector); letter-spacing: 4px; text-transform: uppercase;
+    margin-bottom: 24px; opacity: 0; animation: fadeUp 0.8s 0.2s forwards;
+  }
+  .hero-title {
+    font-size: clamp(50px, 8vw, 108px); font-weight: 900;
+    line-height: 0.9; margin-bottom: 32px;
+    opacity: 0; animation: fadeUp 0.8s 0.4s forwards;
+  }
+  .hero-title .t-bitmap { color: var(--bitmap); }
+  .hero-title .t-vector { color: var(--vector); }
+
+  .hero-sub {
+    font-size: 16px; color: var(--muted); max-width: 480px;
+    line-height: 1.75; margin-bottom: 48px; font-weight: 400;
+    opacity: 0; animation: fadeUp 0.8s 0.6s forwards;
+  }
+  .hero-cta { display: flex; gap: 14px; opacity: 0; animation: fadeUp 0.8s 0.8s forwards; }
+
+  .btn {
+    font-family: 'Space Mono', monospace; font-size: 11px;
+    letter-spacing: 2px; text-transform: uppercase;
+    padding: 14px 28px; border-radius: 4px; cursor: none;
+    transition: all 0.2s; text-decoration: none; border: none;
+  }
+  .btn-primary { background: var(--vector); color: #000; }
+  .btn-primary:hover { background: #00ffb3; transform: translateY(-2px); }
+  .btn-outline { background: transparent; color: var(--text); border: 1px solid var(--border); }
+  .btn-outline:hover { border-color: var(--vector); color: var(--vector); transform: translateY(-2px); }
+
+  .pixel-bg {
+    position: absolute; right: 0; top: 50%; transform: translateY(-50%);
+    display: grid; grid-template-columns: repeat(16,1fr);
+    gap: 3px; width: 360px; height: 360px;
+    opacity: 0; animation: fadeIn 1s 1s forwards;
+  }
+  .pixel-cell {
+    border-radius: 2px;
+    animation: pixPulse var(--dur,3s) var(--del,0s) infinite alternate;
+  }
+  @keyframes pixPulse {
+    from { opacity: var(--f,0.1); } to { opacity: var(--t,0.8); }
+  }
+
+  /* ── SECTION HEADER ── */
+  .section-tag {
+    font-family: 'Space Mono', monospace; font-size: 10px;
+    color: var(--muted); letter-spacing: 4px;
+    text-transform: uppercase; margin-bottom: 10px;
+  }
+  .section-title {
+    font-size: clamp(30px, 5vw, 58px); font-weight: 900;
+    line-height: 1.05; margin-bottom: 44px;
+  }
+
+  /* ── COMPARAÇÃO ── */
+  #comparacao { background: var(--surface); }
+
+  .compare-grid {
+    display: grid; grid-template-columns: 1fr 70px 1fr;
+    max-width: 1080px; margin: 0 auto;
+  }
+  .compare-col { padding: 30px; border-radius: 12px; }
+  .compare-col.bc { background: rgba(255,62,62,0.05); border: 1px solid rgba(255,62,62,0.2); }
+  .compare-col.vc { background: rgba(0,229,160,0.05); border: 1px solid rgba(0,229,160,0.2); }
+  .compare-head { display: flex; align-items: center; gap: 10px; margin-bottom: 24px; }
+  .compare-dot { width: 12px; height: 12px; border-radius: 50%; flex-shrink: 0; }
+  .compare-col-title { font-size: 20px; font-weight: 800; }
+
+  .compare-item {
+    display: flex; gap: 12px; align-items: flex-start;
+    padding: 11px 0; border-bottom: 1px solid var(--border);
+    transition: transform 0.2s;
+  }
+  .compare-item:last-child { border-bottom: none; }
+  .compare-item:hover { transform: translateX(4px); }
+  .ci-icon { font-size: 18px; flex-shrink: 0; margin-top: 2px; }
+  .ci-text strong { display: block; font-size: 13px; font-weight: 700; margin-bottom: 3px; }
+  .ci-text p { font-size: 12px; color: var(--muted); line-height: 1.5; font-weight: 400; }
+
+  .vs-div {
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center; padding: 60px 0; gap: 8px;
+  }
+  .vs-line { width: 1px; flex: 1; background: linear-gradient(to bottom,transparent,var(--border),transparent); }
+  .vs-badge {
+    font-family: 'Space Mono', monospace; font-size: 10px; font-weight: 700;
+    width: 38px; height: 38px; border-radius: 50%;
+    background: var(--bg); border: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: center;
+    color: var(--muted); letter-spacing: 1px;
+  }
+
+  /* ── ZOOM DEMO ── */
+  #zoom-demo { text-align: center; }
+  .zoom-container { display: flex; gap: 36px; justify-content: center; flex-wrap: wrap; margin-top: 48px; }
+  .zoom-card {
+    width: 330px; background: var(--surface);
+    border-radius: 16px; overflow: hidden; border: 1px solid var(--border);
+    transition: transform 0.3s;
+  }
+  .zoom-card:hover { transform: translateY(-6px); }
+  .zoom-canvas-wrap { position: relative; height: 230px; overflow: hidden; }
+  .zoom-lbl {
+    position: absolute; top: 12px; left: 12px;
+    font-family: 'Space Mono', monospace; font-size: 9px;
+    letter-spacing: 2px; padding: 4px 10px; border-radius: 20px;
+    text-transform: uppercase; z-index: 2;
+  }
+  .zoom-lbl.b { background: rgba(255,62,62,0.2); color: var(--bitmap); border: 1px solid rgba(255,62,62,0.3); }
+  .zoom-lbl.v { background: rgba(0,229,160,0.2); color: var(--vector); border: 1px solid rgba(0,229,160,0.3); }
+  .zoom-info { padding: 18px 22px; }
+  .zoom-info h3 { font-size: 16px; font-weight: 800; margin-bottom: 5px; }
+  .zoom-info p { font-size: 12px; color: var(--muted); line-height: 1.5; font-weight: 400; }
+  .zoom-slider-wrap { padding: 0 22px 18px; display: flex; align-items: center; gap: 10px; }
+  .zoom-slider-wrap label { font-family: 'Space Mono', monospace; font-size: 9px; color: var(--muted); letter-spacing: 1px; }
+  input[type=range] { flex: 1; -webkit-appearance: none; height: 3px; border-radius: 2px; background: var(--border); cursor: none; }
+  input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 14px; height: 14px; border-radius: 50%; background: var(--vector); }
+  .zoom-val { font-family: 'Space Mono', monospace; font-size: 10px; color: var(--vector); width: 32px; text-align: right; }
+
+  /* ── FORMATOS ── */
+  #formatos { background: var(--surface); }
+  .fmt-tabs { display: flex; gap: 4px; margin-bottom: 36px; }
+  .tab-btn {
+    font-family: 'Space Mono', monospace; font-size: 10px; letter-spacing: 2px;
+    padding: 10px 22px; border-radius: 6px; border: 1px solid var(--border);
+    background: transparent; color: var(--muted); cursor: none;
+    transition: all 0.2s; text-transform: uppercase;
+  }
+  .tab-btn.active { background: var(--vector); color: #000; border-color: var(--vector); font-weight: 700; }
+  .tab-btn:hover:not(.active) { border-color: var(--muted); color: var(--text); }
+  .formats-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px,1fr)); gap: 14px; }
+  .fmt-card {
+    background: var(--bg); border: 1px solid var(--border);
+    border-radius: 12px; padding: 20px; cursor: none;
+    transition: all 0.25s; position: relative; overflow: hidden;
+  }
+  .fmt-card::before {
+    content: ''; position: absolute; top: 0; left: 0; right: 0;
+    height: 2px; background: var(--cc, var(--vector));
+    transform: scaleX(0); transition: transform 0.3s; transform-origin: left;
+  }
+  .fmt-card:hover { transform: translateY(-4px); border-color: var(--cc, var(--vector)); box-shadow: 0 12px 36px rgba(0,0,0,0.4); }
+  .fmt-card:hover::before { transform: scaleX(1); }
+  .fmt-ext { font-family: 'Space Mono', monospace; font-size: 19px; font-weight: 700; color: var(--cc, var(--vector)); margin-bottom: 5px; }
+  .fmt-full { font-size: 10px; color: var(--muted); margin-bottom: 10px; line-height: 1.4; font-weight: 400; }
+  .fmt-desc { font-size: 12px; line-height: 1.6; font-weight: 400; }
+  .fmt-badges { display: flex; gap: 5px; flex-wrap: wrap; margin-top: 10px; }
+  .badge {
+    font-family: 'Space Mono', monospace; font-size: 8px;
+    letter-spacing: 1px; padding: 3px 7px; border-radius: 3px; text-transform: uppercase;
+  }
+  .bl { background: rgba(255,62,62,0.15); color: var(--bitmap); }
+  .bll { background: rgba(0,229,160,0.15); color: var(--vector); }
+  .bw { background: rgba(123,94,167,0.2); color: #b88fff; }
+  .ba { background: rgba(245,200,66,0.15); color: var(--gold); }
+  .bp { background: rgba(255,255,255,0.08); color: var(--text); }
+
+  /* ── PROGRAMAS ── */
+  .tools-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; max-width: 1080px; margin: 44px auto 0; }
+  .tools-col-head { display: flex; align-items: center; gap: 10px; margin-bottom: 16px; padding-bottom: 14px; border-bottom: 1px solid var(--border); }
+  .tc-dot { width: 10px; height: 10px; border-radius: 50%; }
+  .tc-label { font-size: 17px; font-weight: 800; }
+  .tool-item {
+    display: flex; align-items: center; gap: 13px;
+    padding: 13px 15px; border-radius: 10px; margin-bottom: 7px;
+    background: var(--surface); border: 1px solid transparent;
+    transition: all 0.2s; cursor: none;
+  }
+  .tool-item:hover { border-color: var(--ic, var(--vector)); transform: translateX(5px); }
+  .tool-emoji { font-size: 22px; flex-shrink: 0; }
+  .tool-info { flex: 1; }
+  .tool-name { font-size: 13px; font-weight: 700; margin-bottom: 2px; }
+  .tool-desc { font-size: 11px; color: var(--muted); font-weight: 400; }
+  .tool-tag {
+    font-family: 'Space Mono', monospace; font-size: 8px; letter-spacing: 1px;
+    padding: 3px 8px; border-radius: 4px; text-transform: uppercase;
+  }
+  .tag-free { background: rgba(0,229,160,0.15); color: var(--vector); }
+  .tag-paid { background: rgba(255,62,62,0.12); color: var(--bitmap); }
+
+  /* ── RENDERING ── */
+  #rendering { background: var(--surface); text-align: center; }
+  .render-flow { display: flex; align-items: center; justify-content: center; gap: 8px; margin: 56px auto 0; max-width: 860px; flex-wrap: wrap; }
+  .render-step {
+    display: flex; flex-direction: column; align-items: center; gap: 12px;
+    padding: 32px 24px; background: var(--bg);
+    border: 1px solid var(--border); border-radius: 14px; width: 185px;
+    transition: all 0.3s; cursor: none; position: relative;
+  }
+  .render-step:hover { border-color: var(--sc, var(--vector)); transform: translateY(-8px); box-shadow: 0 20px 40px rgba(0,0,0,0.5); }
+  .render-step:hover .rs-icon { transform: scale(1.2); }
+  .rs-num {
+    position: absolute; top: -10px; left: 50%; transform: translateX(-50%);
+    font-family: 'Space Mono', monospace; font-size: 9px; font-weight: 700;
+    background: var(--sc, var(--vector)); color: #000;
+    width: 20px; height: 20px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .rs-icon { font-size: 38px; transition: transform 0.3s; }
+  .rs-title { font-size: 13px; font-weight: 700; text-align: center; }
+  .rs-sub { font-size: 11px; color: var(--muted); text-align: center; line-height: 1.5; font-weight: 400; }
+  .render-arrow { font-size: 20px; color: var(--muted); animation: arrowAnim 1.5s infinite; align-self: center; }
+  @keyframes arrowAnim { 0%,100%{transform:translateX(0);opacity:.4} 50%{transform:translateX(4px);opacity:1} }
+  .render-def {
+    max-width: 660px; margin: 44px auto 0;
+    padding: 26px 32px; background: var(--bg);
+    border: 1px solid var(--border); border-radius: 14px;
+    border-left: 3px solid var(--vector); text-align: left;
+  }
+  .render-def-lbl { font-family: 'Space Mono', monospace; font-size: 9px; letter-spacing: 3px; color: var(--vector); text-transform: uppercase; margin-bottom: 8px; }
+  .render-def p { font-size: 13.5px; line-height: 1.75; color: var(--text); font-weight: 400; }
+  .render-def em { color: var(--vector); font-style: normal; font-weight: 700; }
+
+  /* ── FUNDAMENTOS ── */
+  .fund-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px,1fr)); gap: 18px; margin-top: 44px; }
+  .fund-card {
+    padding: 26px 22px; border-radius: 16px;
+    background: var(--surface); border: 1px solid var(--border);
+    transition: all 0.3s; cursor: none; position: relative; overflow: hidden;
+  }
+  .fund-card::after {
+    content: ''; position: absolute; bottom: 0; right: 0;
+    width: 80px; height: 80px;
+    background: radial-gradient(circle, var(--fc,#00e5a0) 0%, transparent 70%);
+    opacity: 0.06; transition: opacity 0.3s, transform 0.3s;
+    transform: translate(20px,20px);
+  }
+  .fund-card:hover { border-color: var(--fc, var(--vector)); transform: translateY(-5px) rotate(-0.4deg); }
+  .fund-card:hover::after { opacity: 0.16; transform: translate(10px,10px); }
+  .fund-icon { font-size: 34px; margin-bottom: 12px; display: block; }
+  .fund-name { font-size: 15px; font-weight: 800; color: var(--fc, var(--vector)); margin-bottom: 7px; }
+  .fund-desc { font-size: 12px; color: var(--muted); line-height: 1.6; font-weight: 400; }
+
+  /* ── QUIZ ── */
+  #quiz { background: var(--surface); }
+  .quiz-wrap { max-width: 620px; margin: 0 auto; }
+  .quiz-prog { display: flex; gap: 5px; margin-bottom: 36px; }
+  .qp { height: 4px; flex: 1; border-radius: 2px; background: var(--border); transition: background 0.3s; }
+  .qp.done { background: var(--vector); }
+  .qp.active { background: var(--gold); }
+  .quiz-card { background: var(--bg); border: 1px solid var(--border); border-radius: 16px; padding: 34px; }
+  .q-num { font-family: 'Space Mono', monospace; font-size: 10px; color: var(--muted); letter-spacing: 3px; text-transform: uppercase; margin-bottom: 12px; }
+  .q-text { font-size: 18px; font-weight: 700; line-height: 1.4; margin-bottom: 26px; }
+  .q-opts { display: flex; flex-direction: column; gap: 9px; }
+  .q-opt {
+    padding: 13px 18px; border-radius: 10px;
+    border: 1px solid var(--border); background: var(--surface);
+    color: var(--text); font-family: 'Syne', sans-serif;
+    font-size: 13.5px; font-weight: 500; text-align: left;
+    cursor: none; transition: all 0.2s;
+  }
+  .q-opt:hover:not(:disabled) { border-color: var(--vector); background: rgba(0,229,160,0.06); transform: translateX(3px); }
+  .q-opt.correct { border-color: var(--vector); background: rgba(0,229,160,0.1); color: var(--vector); }
+  .q-opt.wrong { border-color: var(--bitmap); background: rgba(255,62,62,0.09); color: var(--bitmap); }
+  .q-feedback { margin-top: 18px; padding: 13px 16px; border-radius: 10px; font-size: 13px; line-height: 1.5; font-weight: 400; display: none; }
+  .q-feedback.show { display: block; }
+  .q-feedback.ok { background: rgba(0,229,160,0.1); border: 1px solid rgba(0,229,160,0.2); color: var(--vector); }
+  .q-feedback.fail { background: rgba(255,62,62,0.08); border: 1px solid rgba(255,62,62,0.2); color: var(--bitmap); }
+  .q-next {
+    margin-top: 18px; width: 100%; padding: 13px;
+    border-radius: 10px; background: var(--vector); color: #000;
+    font-family: 'Space Mono', monospace; font-size: 11px; letter-spacing: 2px; font-weight: 700;
+    text-transform: uppercase; border: none; cursor: none; transition: all 0.2s; display: none;
+  }
+  .q-next.show { display: block; }
+  .q-next:hover { background: #00ffb3; transform: translateY(-2px); }
+  .quiz-result { text-align: center; display: none; padding: 16px 0; }
+  .quiz-result.show { display: block; }
+  .res-score { font-size: 68px; font-weight: 900; color: var(--vector); line-height: 1; margin-bottom: 8px; }
+  .res-lbl { font-size: 17px; font-weight: 700; margin-bottom: 12px; }
+  .res-sub { font-size: 13px; color: var(--muted); font-weight: 400; margin-bottom: 26px; }
+  .res-retry {
+    font-family: 'Space Mono', monospace; font-size: 10px; letter-spacing: 2px;
+    padding: 11px 26px; border-radius: 6px;
+    border: 1px solid var(--vector); background: transparent;
+    color: var(--vector); cursor: none; transition: all 0.2s; text-transform: uppercase;
+  }
+  .res-retry:hover { background: rgba(0,229,160,0.1); }
+
+  footer {
+    padding: 36px 40px; border-top: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: space-between;
+    font-family: 'Space Mono', monospace; font-size: 10px; color: var(--muted); letter-spacing: 2px;
+  }
+
+  @keyframes fadeUp { from{opacity:0;transform:translateY(22px)} to{opacity:1;transform:translateY(0)} }
+  @keyframes fadeIn { from{opacity:0} to{opacity:1} }
+  .reveal { opacity: 0; transform: translateY(28px); transition: opacity 0.65s ease, transform 0.65s ease; }
+  .reveal.visible { opacity: 1; transform: translateY(0); }
+
+  ::-webkit-scrollbar { width: 4px; }
+  ::-webkit-scrollbar-track { background: var(--bg); }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+  @media(max-width:768px){
+    nav{padding:13px 18px} .nav-pills{display:none}
+    section{padding:80px 18px 50px}
+    .compare-grid{grid-template-columns:1fr} .vs-div{display:none}
+    .tools-grid{grid-template-columns:1fr} .pixel-bg{display:none}
+    .render-flow{flex-direction:column} .render-arrow{transform:rotate(90deg)}
+  }
+</style>
+</head>
+<body>
+
+<div id="cursor"></div>
+<div id="cursor-ring"></div>
+
+<nav>
+  <div class="nav-logo">APLICAÇÕES INFORMÁTICAS</div>
+  <div class="nav-pills">
+    <a class="nav-pill" href="#hero">Início</a>
+    <a class="nav-pill" href="#comparacao">Comparação</a>
+    <a class="nav-pill" href="#zoom-demo">Zoom</a>
+    <a class="nav-pill" href="#formatos">Formatos</a>
+    <a class="nav-pill" href="#programas">Programas</a>
+    <a class="nav-pill" href="#rendering">Rendering</a>
+    <a class="nav-pill" href="#fundamentos">Fundamentos</a>
+    <a class="nav-pill" href="#quiz">Quiz</a>
+  </div>
+</nav>
+
+<!-- HERO -->
+<section id="hero">
+  <div class="hero-label">Aplicações Informáticas · Multimédia</div>
+  <h1 class="hero-title">
+    <span class="t-bitmap">BITMAP</span><br>
+    <span style="color:var(--muted);font-size:0.42em;font-weight:400;letter-spacing:3px">versus</span><br>
+    <span class="t-vector">VETORIAL</span>
+  </h1>
+  <p class="hero-sub">As imagens e os gráficos estão para as aplicações multimédia como as fotografias e os desenhos estão para as revistas, os jornais e os livros.</p>
+  <div class="hero-cta">
+    <a class="btn btn-primary" href="#comparacao">Explorar</a>
+    <a class="btn btn-outline" href="#quiz">Fazer o quiz</a>
+  </div>
+  <div class="pixel-bg" id="pixelGrid"></div>
+</section>
+
+<!-- COMPARAÇÃO -->
+<section id="comparacao">
+  <div class="reveal">
+    <div class="section-tag">— 01 / Comparação</div>
+    <h2 class="section-title">Formato <span class="t-bitmap">Bitmap</span> vs. <span class="t-vector">Vetorial</span></h2>
+  </div>
+  <div class="compare-grid reveal">
+    <div class="compare-col bc">
+      <div class="compare-head">
+        <div class="compare-dot" style="background:var(--bitmap)"></div>
+        <span class="compare-col-title t-bitmap">Bitmap (Imagem)</span>
+      </div>
+      <div class="compare-item">
+        <span class="ci-icon">🔲</span>
+        <div class="ci-text">
+          <strong>Mapa de bits</strong>
+          <p>Constituída por uma grelha de pequenos quadrados chamados píxeis. Cada quadrado é localizado pela interseção de uma linha com uma coluna.</p>
+        </div>
+      </div>
+      <div class="compare-item">
+        <span class="ci-icon">🎨</span>
+        <div class="ci-text">
+          <strong>Trabalho ao nível do píxel</strong>
+          <p>Imagens trabalhadas ao nível do píxel, no qual pode estar disponível uma vasta gama de cores.</p>
+        </div>
+      </div>
+      <div class="compare-item">
+        <span class="ci-icon">🔒</span>
+        <div class="ci-text">
+          <strong>Difícil editar partes</strong>
+          <p>Não é fácil alterar partes da imagem — não é possível clicar numa parte e movê-la.</p>
+        </div>
+      </div>
+      <div class="compare-item">
+        <span class="ci-icon">📊</span>
+        <div class="ci-text">
+          <strong>Qualidade depende de resolução e profundidade de cor</strong>
+          <p>As imagens com qualidade dependem da resolução e da profundidade de cor.</p>
+        </div>
+      </div>
+      <div class="compare-item">
+        <span class="ci-icon">📦</span>
+        <div class="ci-text">
+          <strong>Ficheiros muito grandes</strong>
+          <p>Imagens bitmap de alta resolução geram ficheiros de tamanho muito grande.</p>
+        </div>
+      </div>
+      <div class="compare-item">
+        <span class="ci-icon">🔍</span>
+        <div class="ci-text">
+          <strong>Perde qualidade ao ampliar</strong>
+          <p>Quando ampliada, perde a sua qualidade ao mostrar os píxeis que a constituem.</p>
+        </div>
+      </div>
+    </div>
+    <div class="vs-div">
+      <div class="vs-line"></div>
+      <div class="vs-badge">VS</div>
+      <div class="vs-line"></div>
+    </div>
+    <div class="compare-col vc">
+      <div class="compare-head">
+        <div class="compare-dot" style="background:var(--vector)"></div>
+        <span class="compare-col-title t-vector">Vetorial (Gráfico/Desenho)</span>
+      </div>
+      <div class="compare-item">
+        <span class="ci-icon">📐</span>
+        <div class="ci-text">
+          <strong>Fórmulas matemáticas</strong>
+          <p>Baseiam-se em fórmulas matemáticas e não em coordenadas de píxeis.</p>
+        </div>
+      </div>
+      <div class="compare-item">
+        <span class="ci-icon">📏</span>
+        <div class="ci-text">
+          <strong>Elementos 2D e 3D</strong>
+          <p>Constituídas por elementos bidimensionais (linhas, retângulos, polígonos, curvas) ou tridimensionais (sólidos ou outros volumes).</p>
+        </div>
+      </div>
+      <div class="compare-item">
+        <span class="ci-icon">🖱️</span>
+        <div class="ci-text">
+          <strong>Elementos facilmente deslocados</strong>
+          <p>Basta clicar e arrastar o objeto — o computador recalcula automaticamente a nova posição.</p>
+        </div>
+      </div>
+      <div class="compare-item">
+        <span class="ci-icon">✅</span>
+        <div class="ci-text">
+          <strong>Não perde qualidade ao ampliar</strong>
+          <p>Quando ampliada, não perde a sua qualidade, porque esta não depende da sua resolução.</p>
+        </div>
+      </div>
+      <div class="compare-item">
+        <span class="ci-icon">💾</span>
+        <div class="ci-text">
+          <strong>Ficheiros muito mais pequenos</strong>
+          <p>Geram ficheiros muito mais pequenos do que os criados em programas bitmap.</p>
+        </div>
+      </div>
+      <div class="compare-item">
+        <span class="ci-icon">🖨️</span>
+        <div class="ci-text">
+          <strong>Qualidade depende do dispositivo de saída</strong>
+          <p>A qualidade não é baseada na resolução da imagem (ppi), mas na resolução do dispositivo de saída (dpi — dots per inch).</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ZOOM DEMO -->
+<section id="zoom-demo">
+  <div class="reveal">
+    <div class="section-tag">— 02 / Demonstração</div>
+    <h2 class="section-title">Experimenta o <span style="color:var(--gold)">zoom</span></h2>
+    <p style="color:var(--muted);font-size:14px;font-weight:400;margin-top:-28px">Arrasta o slider para ampliar e observa a diferença entre os dois formatos</p>
+  </div>
+  <div class="zoom-container">
+    <div class="zoom-card reveal">
+      <div class="zoom-canvas-wrap">
+        <div class="zoom-lbl b">Bitmap</div>
+        <canvas id="bitmapCanvas" width="330" height="230"></canvas>
+      </div>
+      <div class="zoom-info">
+        <h3 class="t-bitmap">Imagem Bitmap</h3>
+        <p>Ao ampliar, os píxeis ficam visíveis e a imagem perde nitidez.</p>
+      </div>
+      <div class="zoom-slider-wrap">
+        <label>ZOOM</label>
+        <input type="range" id="bitmapZoom" min="1" max="20" value="1">
+        <span class="zoom-val" id="bvVal">1×</span>
+      </div>
+    </div>
+    <div class="zoom-card reveal">
+      <div class="zoom-canvas-wrap">
+        <div class="zoom-lbl v">Vetorial</div>
+        <canvas id="vectorCanvas" width="330" height="230"></canvas>
+      </div>
+      <div class="zoom-info">
+        <h3 class="t-vector">Imagem Vetorial</h3>
+        <p>Ao ampliar, a imagem mantém-se sempre nítida — as fórmulas recalculam os contornos.</p>
+      </div>
+      <div class="zoom-slider-wrap">
+        <label>ZOOM</label>
+        <input type="range" id="vectorZoom" min="1" max="20" value="1">
+        <span class="zoom-val" id="vvVal">1×</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- FORMATOS -->
+<section id="formatos">
+  <div class="reveal">
+    <div class="section-tag">— 03 / Formatos</div>
+    <h2 class="section-title">Formatos de <span style="color:var(--accent)">ficheiros de imagens</span></h2>
+  </div>
+  <div class="fmt-tabs reveal">
+    <button class="tab-btn active" onclick="showTab('bitmap')">Bitmap</button>
+    <button class="tab-btn" onclick="showTab('vector')">Vetorial</button>
+  </div>
+  <div class="formats-grid reveal" id="formatsGrid"></div>
+</section>
+
+<!-- PROGRAMAS -->
+<section id="programas">
+  <div class="reveal">
+    <div class="section-tag">— 04 / Programas</div>
+    <h2 class="section-title">Programas do <span style="color:var(--gold)">computador</span></h2>
+  </div>
+  <div class="tools-grid">
+    <div class="reveal">
+      <div class="tools-col-head">
+        <div class="tc-dot" style="background:var(--bitmap)"></div>
+        <span class="tc-label t-bitmap">Programas Bitmap</span>
+      </div>
+      <div id="bitmapTools"></div>
+    </div>
+    <div class="reveal">
+      <div class="tools-col-head">
+        <div class="tc-dot" style="background:var(--vector)"></div>
+        <span class="tc-label t-vector">Programas Vetoriais</span>
+      </div>
+      <div id="vectorTools"></div>
+    </div>
+  </div>
+</section>
+
+<!-- RENDERING -->
+<section id="rendering">
+  <div class="reveal">
+    <div class="section-tag">— 05 / Rendering</div>
+    <h2 class="section-title">O processo de <span style="color:var(--accent)">rendering</span></h2>
+  </div>
+  <div class="render-flow reveal">
+    <div class="render-step" style="--sc:#00e5a0">
+      <div class="rs-num">1</div>
+      <div class="rs-icon">📐</div>
+      <div class="rs-title">Dados Gráficos Vetoriais</div>
+      <div class="rs-sub">Equações matemáticas descrevem os objetos e gráficos</div>
+    </div>
+    <div class="render-arrow">→</div>
+    <div class="render-step" style="--sc:#7b5ea7">
+      <div class="rs-num">2</div>
+      <div class="rs-icon">⚙️</div>
+      <div class="rs-title">Rendering</div>
+      <div class="rs-sub">Transforma dados gráficos em dados de imagem</div>
+    </div>
+    <div class="render-arrow">→</div>
+    <div class="render-step" style="--sc:#ff3e3e">
+      <div class="rs-num">3</div>
+      <div class="rs-icon">🖼️</div>
+      <div class="rs-title">Imagem Bitmap</div>
+      <div class="rs-sub">Gera os píxeis da imagem bitmap correspondente</div>
+    </div>
+    <div class="render-arrow">→</div>
+    <div class="render-step" style="--sc:#06b6d4">
+      <div class="rs-num">4</div>
+      <div class="rs-icon">🖥️</div>
+      <div class="rs-title">Monitor ou Impressora</div>
+      <div class="rs-sub">Dispositivo de saída — resolução em dpi</div>
+    </div>
+  </div>
+  <div class="render-def reveal">
+    <div class="render-def-lbl">Definição</div>
+    <p>O <em>rendering</em> é uma operação que <em>transforma os dados gráficos em dados de imagem</em> — interpreta as equações matemáticas que descrevem os objetos e os gráficos, e gera os píxeis da imagem bitmap correspondente. Para se reproduzir uma imagem vetorial num monitor ou numa impressora, é utilizada esta operação.</p>
+  </div>
+</section>
+
+<!-- FUNDAMENTOS DO DESENHO VETORIAL -->
+<section id="fundamentos">
+  <div class="reveal">
+    <div class="section-tag">— 06 / Fundamentos</div>
+    <h2 class="section-title">Fundamentos do <span class="t-vector">desenho vetorial</span></h2>
+    <p style="color:var(--muted);font-size:14px;font-weight:400;margin-top:-28px">Conjunto de elementos-base que permitem desenhar o que se pretende</p>
+  </div>
+  <div class="fund-grid reveal" id="fundGrid"></div>
+</section>
+
+<!-- QUIZ -->
+<section id="quiz">
+  <div class="reveal">
+    <div class="section-tag">— 07 / Quiz</div>
+    <h2 class="section-title" style="margin-bottom:36px">Testa o teu <span style="color:var(--gold)">conhecimento</span></h2>
+  </div>
+  <div class="quiz-wrap">
+    <div class="quiz-prog reveal" id="quizProg"></div>
+    <div class="quiz-card reveal">
+      <div id="quizInner"></div>
+      <div id="quizResult" class="quiz-result">
+        <div class="res-score" id="resScore"></div>
+        <div class="res-lbl" id="resLbl"></div>
+        <div class="res-sub" id="resSub"></div>
+        <button class="res-retry" onclick="startQuiz()">↺ Tentar novamente</button>
+      </div>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <span>APLICAÇÕES INFORMÁTICAS · IMAGENS EM MULTIMÉDIA</span>
+  <span>BITMAP · VETORIAL · RENDERING</span>
+</footer>
+
+<script>
+// CURSOR
+const cur=document.getElementById('cursor'),curR=document.getElementById('cursor-ring');
+let mx=0,my=0,rx=0,ry=0;
+document.addEventListener('mousemove',e=>{mx=e.clientX;my=e.clientY;cur.style.left=mx+'px';cur.style.top=my+'px';});
+(function a(){rx+=(mx-rx)*0.12;ry+=(my-ry)*0.12;curR.style.left=rx+'px';curR.style.top=ry+'px';requestAnimationFrame(a);})();
+document.querySelectorAll('a,button,input').forEach(el=>{
+  el.addEventListener('mouseenter',()=>{cur.style.transform='translate(-50%,-50%) scale(2)';curR.style.width='52px';curR.style.height='52px';});
+  el.addEventListener('mouseleave',()=>{cur.style.transform='translate(-50%,-50%) scale(1)';curR.style.width='36px';curR.style.height='36px';});
+});
+
+// PIXEL GRID
+const cols=['#ff3e3e','#00e5a0','#7b5ea7','#f5c842','#06b6d4','#1e1e2e','#ff7b54'];
+const pg=document.getElementById('pixelGrid');
+for(let i=0;i<256;i++){
+  const c=document.createElement('div');c.className='pixel-cell';
+  const col=cols[Math.floor(Math.random()*cols.length)];
+  c.style.cssText=`background:${col};--dur:${(2+Math.random()*4).toFixed(1)}s;--del:${(Math.random()*3).toFixed(1)}s;--f:${(Math.random()*0.2).toFixed(2)};--t:${(0.3+Math.random()*0.6).toFixed(2)}`;
+  pg.appendChild(c);
+}
+
+// SCROLL REVEAL
+const io=new IntersectionObserver(entries=>entries.forEach((e,i)=>{if(e.isIntersecting)setTimeout(()=>e.target.classList.add('visible'),60*i);}),{threshold:0.1});
+document.querySelectorAll('.reveal').forEach(el=>io.observe(el));
+
+// ACTIVE NAV
+const secs=document.querySelectorAll('section'),pills=document.querySelectorAll('.nav-pill');
+window.addEventListener('scroll',()=>{
+  let c='';secs.forEach(s=>{if(window.scrollY>=s.offsetTop-130)c=s.id;});
+  pills.forEach(p=>p.classList.toggle('active',p.getAttribute('href')==='#'+c));
+});
+
+// ZOOM CANVASES
+function drawBitmap(zoom){
+  const cv=document.getElementById('bitmapCanvas'),ctx=cv.getContext('2d'),W=cv.width,H=cv.height;
+  ctx.clearRect(0,0,W,H);ctx.fillStyle='#12121a';ctx.fillRect(0,0,W,H);
+  const ps=Math.max(1,zoom),base=38,ox=W/2-base*ps/2,oy=H/2-base*ps/2+8;
+  for(let y=0;y<base;y++)for(let x=0;x<base;x++){
+    const nx=(x-base/2)/(base/2),ny=(y-base/2)/(base/2);
+    if((nx*nx+(ny-Math.abs(nx)*0.4+0.3)**2)<0.55){
+      ctx.fillStyle=`hsl(${x*0.5},75%,${55-y*0.4}%)`;
+      ctx.fillRect(ox+x*ps,oy+y*ps,ps,ps);
+      if(zoom>3){ctx.strokeStyle='rgba(0,0,0,0.35)';ctx.lineWidth=0.5;ctx.strokeRect(ox+x*ps,oy+y*ps,ps,ps);}
+    }
+  }
+  if(zoom>8){ctx.fillStyle='rgba(255,62,62,0.9)';ctx.font='bold 10px monospace';ctx.fillText('PÍXEIS VISÍVEIS',W/2-55,H-14);}
+}
+function drawVector(zoom){
+  const cv=document.getElementById('vectorCanvas'),ctx=cv.getContext('2d'),W=cv.width,H=cv.height;
+  ctx.clearRect(0,0,W,H);ctx.fillStyle='#12121a';ctx.fillRect(0,0,W,H);
+  const s=1+(zoom-1)*0.28;
+  ctx.save();ctx.translate(W/2,H/2+8);ctx.scale(s,s);
+  ctx.beginPath();ctx.moveTo(0,-14);
+  ctx.bezierCurveTo(28,-48,68,-10,0,42);
+  ctx.bezierCurveTo(-68,-10,-28,-48,0,-14);
+  const g=ctx.createLinearGradient(0,-48,0,42);g.addColorStop(0,'#00ffb3');g.addColorStop(1,'#00e5a0');
+  ctx.fillStyle=g;ctx.fill();ctx.strokeStyle='#004d38';ctx.lineWidth=1.5/s;ctx.stroke();
+  ctx.restore();
+  if(zoom>8){ctx.fillStyle='rgba(0,229,160,0.9)';ctx.font='bold 10px monospace';ctx.fillText('SEMPRE NÍTIDO ✓',W/2-60,H-14);}
+}
+drawBitmap(1);drawVector(1);
+document.getElementById('bitmapZoom').addEventListener('input',function(){document.getElementById('bvVal').textContent=this.value+'×';drawBitmap(+this.value);});
+document.getElementById('vectorZoom').addEventListener('input',function(){document.getElementById('vvVal').textContent=this.value+'×';drawVector(+this.value);});
+
+// FORMATOS
+const fmtData={
+  bitmap:[
+    {ext:'BMP',name:'Bitmap',desc:'Contém informação do número de píxeis que compõem a imagem e da cor de cada um deles. É um formato que não inclui qualquer algoritmo de compressão.',badges:[['bp','Sem compressão']],color:'#dc2626'},
+    {ext:'GIF',name:'Graphics Interchange Format',desc:'Formato com compressão sem perdas, não perdendo a qualidade quando é alterado o seu tamanho original. Ficheiros que ocupam um pequeno espaço, perfeitos para o desenvolvimento de animação.',badges:[['bll','Sem perdas'],['ba','Animação']],color:'#7c3aed'},
+    {ext:'JPEG',name:'Joint Photographic Experts Group',desc:'Formato com vários níveis de compressão com perdas, muito popular para a web. A compressão baseia-se na eliminação de informações redundantes e irrelevantes — repetição da mesma cor em pontos adjacentes ou de cores semelhantes não diferenciadas a olho nu.',badges:[['bl','Com perdas'],['bw','Web']],color:'#2563eb'},
+    {ext:'PNG',name:'Portable Network Graphics',desc:'Formato com compressão sem perdas que substitui o formato GIF para a web, suportando uma profundidade de cor até 48 bits, mas não comportando animação.',badges:[['bll','Sem perdas'],['bw','Web']],color:'#0891b2'},
+    {ext:'PCX',name:'PC Paintbrush',desc:'Um dos formatos bitmap mais antigos, criado para o programa Paintbrush da Microsoft. Continua a ser usado pelas aplicações da Zsoft, utilizando compressão com e sem perdas, podendo ser lido por vários programas.',badges:[['bl','Com perdas'],['bll','Sem perdas']],color:'#9d174d'},
+    {ext:'TIFF',name:'Tagged Image File Format',desc:'Formato sem compressão muito utilizado em programas bitmap de pintura e edição de imagem e com software de digitalização. O maior em tamanho e o melhor em qualidade de imagem. Ideal para tratamento da imagem antes de ser convertida para outro formato.',badges:[['bp','Profissional']],color:'#059669'},
+    {ext:'XCF',name:'eXperimental Computing Facility',desc:'O formato utilizado na aplicação GIMP.',badges:[['bp','GIMP']],color:'#374151'},
+    {ext:'WebP',name:'WebP — Google Inc.',desc:'Desenvolvido pela Google Inc., com o intuito de diminuir o tamanho dos ficheiros. A compressão pode ser com ou sem perdas. Reduz de forma significativa o tamanho da imagem, mas mantém a qualidade.',badges:[['bl','Com perdas'],['bll','Sem perdas'],['bw','Web']],color:'#d97706'},
+  ],
+  vector:[
+    {ext:'SVG',name:'Scalable Vector Graphics',desc:'Tende a ser um formato-padrão para a web, especificado pela W3C e definido sob a linguagem XML.',badges:[['bw','Web'],['bp','W3C']],color:'#00e5a0'},
+    {ext:'SXD',name:'OpenOffice.org DRAW',desc:'O formato SXD do OpenOffice.org DRAW permite, de forma simples, o desenho vetorial em trabalhos.',badges:[['bp','OpenOffice']],color:'#0891b2'},
+    {ext:'PS / EPS',name:'PostScript / Encapsulated PostScript',desc:'Os formatos PS e EPS são reconhecidos por quase todos os programas de edição de texto ou de imagem que suportam imagem vetorial.',badges:[['bp','Profissional']],color:'#7c3aed'},
+    {ext:'CDR',name:'CorelDRAW',desc:'O formato CDR é utilizado na aplicação CorelDRAW.',badges:[['bp','CorelDRAW']],color:'#ef4444'},
+    {ext:'WMF',name:'Windows Meta File',desc:'O formato WMF é reconhecido pela maioria dos programas de edição de texto ou de imagem do Microsoft Office.',badges:[['bp','Microsoft Office']],color:'#2563eb'},
+  ]
+};
+
+let activeTab='bitmap';
+function showTab(t){
+  activeTab=t;
+  document.querySelectorAll('.tab-btn').forEach((b,i)=>b.classList.toggle('active',(i===0&&t==='bitmap')||(i===1&&t==='vector')));
+  renderFormats();
+}
+function renderFormats(){
+  const g=document.getElementById('formatsGrid');g.innerHTML='';
+  fmtData[activeTab].forEach(f=>{
+    const d=document.createElement('div');d.className='fmt-card';d.style.setProperty('--cc',f.color);
+    d.innerHTML=`<div class="fmt-ext">.${f.ext}</div><div class="fmt-full">${f.name}</div><div class="fmt-desc">${f.desc}</div><div class="fmt-badges">${f.badges.map(b=>`<span class="badge ${b[0]}">${b[1]}</span>`).join('')}</div>`;
+    g.appendChild(d);
+  });
+}
+renderFormats();
+
+// PROGRAMAS
+const bitmapTools=[
+  {e:'🟢',name:'GIMP',desc:'Programa bitmap gratuito e open-source',tag:'free'},
+  {e:'🔵',name:'Adobe Photoshop',desc:'Programa bitmap profissional da Adobe',tag:'paid'},
+  {e:'🟤',name:'Corel Photo-Paint',desc:'Programa bitmap da suite Corel',tag:'paid'},
+  {e:'🟣',name:'Corel PaintShop Pro',desc:'Programa bitmap da Corel',tag:'paid'},
+  {e:'⬜',name:'Microsoft Paint',desc:'Programa bitmap incluído no Windows',tag:'free'},
+  {e:'🌐',name:'YouiDraw / Vectr',desc:'Programas bitmap baseados na web',tag:'free'},
+];
+const vectorTools=[
+  {e:'🟢',name:'Inkscape',desc:'Programa vetorial gratuito e open-source',tag:'free'},
+  {e:'🟡',name:'Adobe Illustrator',desc:'Programa vetorial profissional da Adobe',tag:'paid'},
+  {e:'🔴',name:'CorelDRAW',desc:'Programa vetorial profissional da Corel',tag:'paid'},
+  {e:'⚫',name:'Freehand',desc:'Programa vetorial da Adobe',tag:'paid'},
+  {e:'🔵',name:'AutoCAD',desc:'Programa vetorial para desenho técnico',tag:'paid'},
+  {e:'🌐',name:'Photopea / Krita / GetPaint / PhotoScape',desc:'Programas vetoriais gratuitos',tag:'free'},
+];
+function renderTools(tools,cId,color){
+  const c=document.getElementById(cId);
+  tools.forEach(t=>{c.innerHTML+=`<div class="tool-item" style="--ic:${color}"><span class="tool-emoji">${t.e}</span><div class="tool-info"><div class="tool-name">${t.name}</div><div class="tool-desc">${t.desc}</div></div><span class="tool-tag tag-${t.tag}">${t.tag==='free'?'Grátis':'Pago'}</span></div>`;});
+}
+renderTools(bitmapTools,'bitmapTools','#ff3e3e');
+renderTools(vectorTools,'vectorTools','#00e5a0');
+
+// FUNDAMENTOS
+const fundData=[
+  {icon:'📏',name:'A linha',desc:'Reta ou curva.',color:'#ff3e3e'},
+  {icon:'⭕',name:'A forma geométrica',desc:'Círculo, quadrado, triângulo.',color:'#7b5ea7'},
+  {icon:'🗂️',name:'A composição',desc:'Posição, ângulo de visão, plano.',color:'#06b6d4'},
+  {icon:'📐',name:'A anatomia',desc:'Proporção, tamanho, comprimento, distância, enquadramento.',color:'#00e5a0'},
+  {icon:'💡',name:'A luz e sombra',desc:'Luz refletida, sombra projetada, brilho.',color:'#f5c842'},
+  {icon:'🎨',name:'A cor',desc:'Mistura de cores, diferentes temperaturas de cor, combinação de cores.',color:'#ec4899'},
+  {icon:'🌐',name:'A perspetiva',desc:'Volume e tridimensionalidade.',color:'#6366f1'},
+];
+const fg=document.getElementById('fundGrid');
+fundData.forEach(f=>{fg.innerHTML+=`<div class="fund-card" style="--fc:${f.color}"><span class="fund-icon">${f.icon}</span><div class="fund-name">${f.name}</div><div class="fund-desc">${f.desc}</div></div>`;});
+
+// QUIZ
+const quizData=[
+  {q:'Como são constituídas as imagens bitmap?',opts:['Por fórmulas matemáticas','Por uma grelha de pequenos quadrados chamados píxeis','Por elementos bidimensionais como linhas e polígonos','Por equações de curvas'],correct:1,fb:'✓ Correto! As imagens bitmap são constituídas por uma grelha de pequenos quadrados chamados píxeis.'},
+  {q:'O que acontece a uma imagem bitmap quando é ampliada?',opts:['Mantém a qualidade original','Converte-se para vetorial automaticamente','Perde a sua qualidade ao mostrar os píxeis que a constituem','Fica com maior profundidade de cor'],correct:2,fb:'✓ Correto! Uma imagem bitmap, quando é ampliada, perde a sua qualidade ao mostrar os píxeis que a constituem.'},
+  {q:'Em que se baseiam as imagens vetoriais?',opts:['Num mapa de bits','Em coordenadas de píxeis','Em fórmulas matemáticas','Em grelhas de quadrados coloridos'],correct:2,fb:'✓ Correto! As imagens vetoriais baseiam-se em fórmulas matemáticas e não em coordenadas dos píxeis.'},
+  {q:'Qual destes é um formato bitmap com compressão SEM perdas?',opts:['JPEG','BMP','PNG','EPS'],correct:2,fb:'✓ Correto! O PNG é um formato com compressão sem perdas que substitui o GIF para a web.'},
+  {q:'O que é o rendering?',opts:['Guardar uma imagem em formato SVG','Uma operação que transforma dados gráficos em dados de imagem','Ampliar uma imagem bitmap','Comprimir um ficheiro de imagem'],correct:1,fb:'✓ Correto! O rendering é uma operação que transforma os dados gráficos em dados de imagem, interpretando as equações matemáticas e gerando os píxeis da imagem bitmap correspondente.'},
+  {q:'Qual destes programas trabalha com imagens bitmap?',opts:['Inkscape','CorelDRAW','AutoCAD','GIMP'],correct:3,fb:'✓ Correto! O GIMP é um exemplo de programa que usa imagens bitmap.'},
+  {q:'Qual formato vetorial é o padrão para a web, especificado pela W3C?',opts:['CDR','WMF','SVG','SXD'],correct:2,fb:'✓ Correto! O SVG tende a ser um formato-padrão para a web, especificado pela W3C e definido sob a linguagem XML.'},
+];
+
+let qIdx=0,score=0,answered=false;
+function startQuiz(){qIdx=0;score=0;answered=false;document.getElementById('quizResult').classList.remove('show');document.getElementById('quizInner').style.display='';renderQ();}
+function renderProg(){document.getElementById('quizProg').innerHTML=quizData.map((_,i)=>`<div class="qp ${i<qIdx?'done':i===qIdx?'active':''}"></div>`).join('');}
+function renderQ(){
+  renderProg();answered=false;
+  const q=quizData[qIdx];
+  document.getElementById('quizInner').innerHTML=`<div class="q-num">Pergunta ${qIdx+1} de ${quizData.length}</div><div class="q-text">${q.q}</div><div class="q-opts">${q.opts.map((o,i)=>`<button class="q-opt" onclick="answer(${i})">${o}</button>`).join('')}</div><div class="q-feedback" id="qfb"></div><button class="q-next" id="qnext" onclick="nextQ()">${qIdx<quizData.length-1?'Próxima →':'Ver resultado'}</button>`;
+}
+function answer(i){
+  if(answered)return;answered=true;
+  const q=quizData[qIdx],opts=document.querySelectorAll('.q-opt');
+  opts.forEach(o=>o.disabled=true);
+  if(i===q.correct){opts[i].classList.add('correct');score++;}
+  else{opts[i].classList.add('wrong');opts[q.correct].classList.add('correct');}
+  const fb=document.getElementById('qfb');
+  fb.textContent=i===q.correct?q.fb:'✗ '+q.fb;
+  fb.className=`q-feedback show ${i===q.correct?'ok':'fail'}`;
+  document.getElementById('qnext').classList.add('show');
+}
+function nextQ(){qIdx++;if(qIdx>=quizData.length)showResult();else renderQ();}
+function showResult(){
+  document.getElementById('quizInner').style.display='none';
+  document.getElementById('quizResult').classList.add('show');
+  document.getElementById('resScore').textContent=`${score}/${quizData.length}`;
+  const p=score/quizData.length;
+  const[l,s]=p===1?['Perfeito! 🎉','Dominaste completamente o tema!']:p>=0.7?['Muito bem! 👏','Ótimo desempenho!']:p>=0.5?['Bom trabalho! 📚','Revê os tópicos onde erraste.']:['Continua a estudar! 💪','Explora os conteúdos acima e tenta outra vez.'];
+  document.getElementById('resLbl').textContent=l;document.getElementById('resSub').textContent=s;renderProg();
+}
+startQuiz();
+</script>
+</body>
+</html>
